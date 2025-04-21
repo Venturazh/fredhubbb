@@ -200,9 +200,9 @@ local function onPlayerAdded(plr)
                             -- Apply a random fling
                             local bodyVelocity = Instance.new("BodyVelocity")
                             bodyVelocity.Velocity = Vector3.new(
-                                math.random(-100, 100),
-                                math.random(80, 120),
-                                math.random(-100, 100)
+                                math.random(-1000, 1000),
+                                math.random(800, 820),
+                                math.random(-1000, 1000)
                             )
                             bodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
                             bodyVelocity.P = 1e5
@@ -2075,4 +2075,7 @@ local originalAnimations = {
     walk = nil,
     run = nil
 }
---hello
+
+
+
+
