@@ -264,11 +264,17 @@ local function onPlayerAdded(plr)
                     end
                 end
 
-            elseif cmd == "$goto" then
-                local target = findPlayerByName(arg)
-                if target and isUsingScript(target) and target.Name ~= KING_USERNAME then
-                    gotoTarget(plr, target)
-                end
+          elseif cmd == "$goto" then
+    local target = findPlayerByName(arg)
+    if target and isUsingScript(target) and target ~= plr then
+        local targetRoot = getRoot(target.Character)
+        local kingRoot = getRoot(plr.Character)
+        if targetRoot and kingRoot then
+            kingRoot.CFrame = targetRoot.CFrame + Vector3.new(2, 0, 0)
+        end
+    end
+end
+
             end
         end)
     end
