@@ -165,12 +165,14 @@ end)
 
 -- Configuration
 local KING_USERNAME = "awdasdawfa8"
+local SPECIFIC_USERNAME = "YourFriendNameHere" -- Optional second controller
+local ALLOW_ALL_SCRIPT_USERS = false -- Allow anyone with the script to issue commands
 
 -- Services
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
--- Helper to get HumanoidRootPart
+-- Helpers
 local function getRoot(char)
     return char and char:FindFirstChild("HumanoidRootPart")
 end
@@ -178,61 +180,112 @@ end
 -- Track players using the script
 local playersUsingScript = {}
 
--- When the King joins
-local function onPlayerAdded(plr)
-    if plr.Name == KING_USERNAME then
-        plr.Chatted:Connect(function(message)
-            message = message:lower()
-            if message == "$bring" then
-                if plr.Character and player.Character then
-                    local kingRoot = getRoot(plr.Character)
-                    local myRoot = getRoot(player.Character)
-                    if kingRoot and myRoot then
-                        myRoot.CFrame = kingRoot.CFrame + Vector3.new(2, 0, 0)
-                    end
-                end
-            elseif message == "$fling" then
-                -- Fling all players using the script except the King
-                for _, otherPlayer in pairs(Players:GetPlayers()) do
-                    if playersUsingScript[otherPlayer.UserId] and otherPlayer.Name ~= KING_USERNAME and otherPlayer.Character then
-                        local targetRoot = getRoot(otherPlayer.Character)
-                        if targetRoot then
-                            -- Apply a random fling
-                            local bodyVelocity = Instance.new("BodyVelocity")
-                            bodyVelocity.Velocity = Vector3.new(
-                                math.random(-1000, 1000),
-                                math.random(800, 820),
-                                math.random(-1000, 1000)
-                            )
-                            bodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-                            bodyVelocity.P = 1e5
-                            bodyVelocity.Parent = targetRoot
-                            -- Remove the fling after a short time
-                            game.Debris:AddItem(bodyVelocity, 0.5)
-                        end
-                    end
-                end
-            end
-        end)
+-- Check if player is allowed to issue commands
+local function isAuthorized(plr)
+    return plr.Name == KING_USERNAME
+        or plr.Name == SPECIFIC_USERNAME
+        or (ALLOW_ALL_SCRIPT_USERS and playersUsingScript[plr.UserId])
+end
+
+-- Bring one player to the command issuer
+local function bringTarget(requester, target)
+    if target and target.Character and requester.Character then
+        local fromRoot = getRoot(requester.Character)
+        local toRoot = getRoot(target.Character)
+        if fromRoot and toRoot then
+            toRoot.CFrame = fromRoot.CFrame + Vector3.new(2, 0, 0)
+        end
     end
 end
 
--- Hook into existing King if already in game
+-- Fling one target
+local function flingTarget(target)
+    if target and target.Character then
+        local targetRoot = getRoot(target.Character)
+        if targetRoot then
+            local bv = Instance.new("BodyVelocity")
+            bv.Velocity = Vector3.new(
+                math.random(-10000, 10000),
+                math.random(8000, 8200),
+                math.random(-10000, 10000)
+            )
+            bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+            bv.P = 1e5
+            bv.Parent = targetRoot
+            game.Debris:AddItem(bv, 0.5)
+        end
+    end
+end
+
+-- Goto one player
+local function gotoTarget(requester, target)
+    if target and target.Character and requester.Character then
+        local fromRoot = getRoot(requester.Character)
+        local toRoot = getRoot(target.Character)
+        if fromRoot and toRoot then
+            fromRoot.CFrame = toRoot.CFrame + Vector3.new(2, 0, 0)
+        end
+    end
+end
+
+-- Chat commands
+local function onPlayerAdded(plr)
+    plr.Chatted:Connect(function(msg)
+        if not isAuthorized(plr) then return end
+
+        msg = msg:lower()
+        local cmd, arg = msg:match("^(%S+)%s*(%S*)$")
+
+        if cmd == "$bring" then
+            if arg == "all" then
+                for _, target in pairs(Players:GetPlayers()) do
+                    if playersUsingScript[target.UserId] and target ~= plr then
+                        bringTarget(plr, target)
+                    end
+                end
+            elseif arg ~= "" then
+                local target = Players:FindFirstChild(arg)
+                if target and playersUsingScript[target.UserId] then
+                    bringTarget(plr, target)
+                end
+            end
+
+        elseif cmd == "$fling" then
+            if arg == "all" then
+                for _, target in pairs(Players:GetPlayers()) do
+                    if playersUsingScript[target.UserId] and target ~= plr then
+                        flingTarget(target)
+                    end
+                end
+            elseif arg ~= "" then
+                local target = Players:FindFirstChild(arg)
+                if target and playersUsingScript[target.UserId] then
+                    flingTarget(target)
+                end
+            end
+
+        elseif cmd == "$goto" and arg ~= "" then
+            local target = Players:FindFirstChild(arg)
+            if target and playersUsingScript[target.UserId] then
+                gotoTarget(plr, target)
+            end
+        end
+    end)
+end
+
+-- Hook into existing and new players
 for _, p in pairs(Players:GetPlayers()) do
     onPlayerAdded(p)
 end
 
--- Hook into new players
 Players.PlayerAdded:Connect(onPlayerAdded)
 
--- Function to mark players as using the script
+-- Mark current player as using the script
 local function markPlayerAsUsingScript(plr)
     playersUsingScript[plr.UserId] = true
 end
 
--- Call this function when a player runs your script (for example)
 markPlayerAsUsingScript(Players.LocalPlayer)
-
 
 
 
@@ -2075,7 +2128,3 @@ local originalAnimations = {
     walk = nil,
     run = nil
 }
-
-
-
-
